@@ -1,5 +1,7 @@
 This is a copy of Assembly: Endgame from Bob Ziroll's React cource, but made in my own way. I've added more features such as keyboard support, and better game over screens. I plan to make it a full on game with levels and everything!
 
+Logo: https://iconscout.com/icons/captain" by Sagar Unagar (https://iconscout.com/contributors/sagarunagar) on  IconScout (https://iconscout.com)
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
