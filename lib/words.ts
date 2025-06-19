@@ -482,3 +482,7 @@ export const words = [
   "yesterday",
   "young"
 ];
+
+export const easyWords = words.filter(word => word.length >= 4 && word.length <= 5);
+export const mediumWords = words.filter(word => word.length >= 6 && word.length <= 8);
+export const hardWords = words.filter(word => word.length >= 9);

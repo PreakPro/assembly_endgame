@@ -4,7 +4,7 @@ import { getFarewellText, cn } from "../../lib/utils"
 import LanguagesDisplay from "@/components/languagesDisplay"
 import LetterDisplay from "@/components/letterDisplay"
 import { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react"
-import { words } from "../../lib/words"	
+import { easyWords, mediumWords, hardWords } from "../../lib/words"	
 import { motion } from "framer-motion"
 import confetti from "canvas-confetti"
  
@@ -13,6 +13,12 @@ export default function AssemblyEndgame() {
 	const [guessedLetters, setGuessedLetters] = useState<string[]>([])
 	const [isGameOver, setIsGameOver] = useState<boolean>(false)
 	const [theme, setTheme] = useState<string | null>(null)
+	const [difficulty, setDifficulty] = useState<string | null>(null)
+
+	useEffect(() => {
+		setDifficulty(localStorage.getItem('difficulty'))
+	}, [])
+	
 	const letterRefs = useRef<{[key: string]: HTMLButtonElement | null}>({})
 	const newGameRef = useRef<HTMLButtonElement>(null)
 	const alphabet = "abcdefghijklmnopqrstuvwxyz"
@@ -28,12 +34,17 @@ export default function AssemblyEndgame() {
 	})
 
 	useEffect(() => {
+		if (!difficulty) return;
 		function generateRandomWord() {
-			const word = words[Math.floor(Math.random() * words.length)]
-			setCurrentWord(word)
+			const word = difficulty === "easy"
+				? easyWords[Math.floor(Math.random() * easyWords.length)]
+				: difficulty === "medium"
+				? mediumWords[Math.floor(Math.random() * mediumWords.length)]
+				: hardWords[Math.floor(Math.random() * hardWords.length)];
+			setCurrentWord(word);
 		}
-		generateRandomWord()
-	}, [])
+		generateRandomWord();
+	}, [difficulty])
 
 	const languagesDisplay = <LanguagesDisplay wrongGuesses={wrongGuesses}/>
 
@@ -115,9 +126,10 @@ export default function AssemblyEndgame() {
 	}, [])
 
 	function newGame() {
+		const word = difficulty === "easy" ? easyWords[Math.floor(Math.random() * easyWords.length)] : difficulty === "medium" ? mediumWords[Math.floor(Math.random() * mediumWords.length)] : hardWords[Math.floor(Math.random() * hardWords.length)]
 		setIsGameOver(false)
 		setGuessedLetters([])
-		setCurrentWord(words[Math.floor(Math.random() * words.length)])
+		setCurrentWord(word)
 	}
 
 	const farewellText = useMemo(() => {
@@ -131,10 +143,10 @@ export default function AssemblyEndgame() {
 
 	const hasWon = currentWord.split("").every(letter => guessedLetters.includes(letter))
 
-	console.log(currentWord)
+	console.log(currentWord, difficulty)
 
 	return (
-		<div className={cn("relative h-screen bg-neutral-800",
+		<div className={cn("relative h-screen",
 			{"light": theme !== "dark"}
 		)}>
 			<main
@@ -148,7 +160,7 @@ export default function AssemblyEndgame() {
 					backgroundPosition: "center",
 				}}
 			>	
-				<div className="relative z-50 p-6 mt-20">
+				<div className="relative z-50 p-6 md:mt-20 mt-40">
 					<section className={cn(
 						"rounded justify-center mx-auto text-center w-80 md:w-120 p-6 text-white z-10",	
 						{ "bg-purple-700 border-1 light:bg-purple-400 light:border-1 light:border-black": !isGameOver},

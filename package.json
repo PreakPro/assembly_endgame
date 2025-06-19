@@ -23,10 +23,27 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/canvas-confetti": "^1.9.0",
-    "@types/node": "^20",
+    "@types/node": "24.0.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "tailwindcss": "^4",
-    "typescript": "^5"
-  }
+    "typescript": "5.8.3"
+  },
+  "description": "This is a copy of Assembly: Endgame from Bob Ziroll's React cource, but made in my own way. I've added more features such as keyboard support, and better game over screens. I plan to make it a full on game with levels and everything!",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PreakPro/assembly_endgame.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/PreakPro/assembly_endgame/issues"
+  },
+  "homepage": "https://github.com/PreakPro/assembly_endgame#readme"
 }
