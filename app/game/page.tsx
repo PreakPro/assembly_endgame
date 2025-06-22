@@ -221,10 +221,10 @@ export default function AssemblyEndgame() {
 		if (hasWon || hasLost) {
 			const addedCoins =
 				difficulty === "easy"
-					? 50
+					? 30
 					: difficulty === "medium"
-					? 100
-					: 150
+					? 40
+					: 50
 			increaseCoins(addedCoins)
 			if (hasWon) {
 				confetti({ particleCount: 150, spread: 130, origin: { y: 0.6 } })
