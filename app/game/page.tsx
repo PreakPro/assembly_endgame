@@ -254,7 +254,7 @@ export default function AssemblyEndgame() {
 			</main>
 		)
 
-    console.log(currentWord)
+    // console.log(currentWord)
 
 	return (
 		<div 
