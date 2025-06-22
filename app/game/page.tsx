@@ -2,224 +2,411 @@
 import { languages } from "../../lib/languages"
 import { getFarewellText, cn } from "../../lib/utils"
 import LanguagesDisplay from "@/components/languagesDisplay"
-import LetterDisplay from "@/components/letterDisplay"
-import { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react"
-import { easyWords, mediumWords, hardWords } from "../../lib/words"	
+import { useEffect, useMemo, useRef, useState } from "react"
+import { easyWords, mediumWords, hardWords } from "../../lib/words"
 import { motion } from "framer-motion"
 import confetti from "canvas-confetti"
- 
+import toast, { Toaster } from "react-hot-toast"
+import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
+import CoinDisplay from "@/components/coinDisplay"
+import Hint from "@/components/hint"
+
 export default function AssemblyEndgame() {
 	const [currentWord, setCurrentWord] = useState<string>("")
 	const [guessedLetters, setGuessedLetters] = useState<string[]>([])
 	const [isGameOver, setIsGameOver] = useState<boolean>(false)
 	const [theme, setTheme] = useState<string | null>(null)
 	const [difficulty, setDifficulty] = useState<string | null>(null)
+	const [coins, setCoins] = useState<number | null>(null)
+	const [hints, setHints] = useState<number | null>(null)
+	const [usedHintLetters, setUsedHintLetters] = useState<string[]>([])
+	const [hintLoading, setHintLoading] = useState(false);
 
-	useEffect(() => {
-		setDifficulty(localStorage.getItem('difficulty'))
-	}, [])
-	
-	const letterRefs = useRef<{[key: string]: HTMLButtonElement | null}>({})
+	const letterRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({})
 	const newGameRef = useRef<HTMLButtonElement>(null)
+	const increaseCoinsInterval = useRef<NodeJS.Timeout | null>(null);
+	const isRunning = useRef(false)
 	const alphabet = "abcdefghijklmnopqrstuvwxyz"
 	const darkModeBg = "./dark_mode_bg.png"
 	const lightModeBg = "./light_mode_bg.png"
 
-	const wrongGuesses = useMemo(() => {
-		return guessedLetters.filter(letter => !currentWord.includes(letter)).length
-	}, [guessedLetters, currentWord])
+	const wrongGuesses = useMemo(
+		() => guessedLetters.filter(letter => !currentWord.includes(letter)).length,
+		[guessedLetters, currentWord]
+	)
 
-	useLayoutEffect(() => {
-		setTheme(localStorage.getItem('theme'))
-	})
+	const hasWon = useMemo(
+		() => currentWord.split("").every(letter => guessedLetters.includes(letter)),
+		[currentWord, guessedLetters]
+	)
 
-	useEffect(() => {
-		if (!difficulty) return;
-		function generateRandomWord() {
-			const word = difficulty === "easy"
-				? easyWords[Math.floor(Math.random() * easyWords.length)]
-				: difficulty === "medium"
-				? mediumWords[Math.floor(Math.random() * mediumWords.length)]
-				: hardWords[Math.floor(Math.random() * hardWords.length)];
-			setCurrentWord(word);
+	useEffect(() => setTheme(localStorage.getItem("theme")), [])
+	useEffect(() => setDifficulty(localStorage.getItem("difficulty")), [])
+
+	useEffect(() => { //coins setup
+		if (typeof window !== "undefined") {
+			const stored = localStorage.getItem("coins");
+
+			if (stored === null) {
+				localStorage.setItem("coins", "100");
+				setCoins(100);
+			} else {
+				const coin = Number(stored);
+				setCoins(coin);
+			}
 		}
-		generateRandomWord();
+    }, []);
+
+	useEffect(() => { //hints = 1 setup
+		if (!hints) return setHints(1)
+	}, [])
+
+	useEffect(() => { //new word logic
+		if (!difficulty) return
+		const pool =
+			difficulty === "easy"
+				? easyWords
+				: difficulty === "medium"
+				? mediumWords
+				: hardWords
+		const word = pool[Math.floor(Math.random() * pool.length)]
+		setCurrentWord(word)
 	}, [difficulty])
 
-	const languagesDisplay = <LanguagesDisplay wrongGuesses={wrongGuesses}/>
+	useEffect(() => { //hint re-render updates
+		if (!currentWord || hints === 0) return
 
-	const letterDisplay = <LetterDisplay currentWord={currentWord} guessedLetters={guessedLetters}/>
-	
+		if (isRunning.current) return;
+
+		const wordLetters = [
+			...new Set(
+				currentWord
+					.split("")
+					.filter(
+						letter =>
+							!guessedLetters.includes(letter) &&
+							!usedHintLetters.includes(letter)
+					)
+			),
+		]
+
+		const nextHintLetter = wordLetters[0]
+
+		if (nextHintLetter) {
+			setUsedHintLetters(prev => [...prev, nextHintLetter])
+			setGuessedLetters(prev => [...new Set([...prev, nextHintLetter])])
+		}
+	}, [])
+   
+	useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const key = e.key.toLowerCase();
+            const button = letterRefs.current[key];
+
+            if (alphabet.includes(key) && button) {
+                button.click();
+            }
+
+            if (key === "enter" || key === " ") {
+                newGameRef.current?.click();
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [alphabet]);
+
+
 	function onLetterClick(letter: string) {
-		setGuessedLetters(prevLetters => prevLetters.includes(letter) ? prevLetters : [...prevLetters, letter])
+		setGuessedLetters(prev =>
+			prev.includes(letter) ? prev : [...prev, letter]
+		)
 	}
 
+	async function increaseCoins(value: number) {
+    	if (increaseCoinsInterval.current) {
+    	    clearInterval(increaseCoinsInterval.current);
+    	}
+	
+    	const start = coins ?? 0;
+    	const end = start + value;
+	
+    	let current = start;
+	
+    	increaseCoinsInterval.current = setInterval(() => {
+    	    current += 2;
+    	    setCoins(current);
+		
+    	    if (current >= end) {
+    	        if (increaseCoinsInterval.current) {
+    	            clearInterval(increaseCoinsInterval.current);
+    	            increaseCoinsInterval.current = null;
+    	        }
+    	    }
+    	}, 1);
+	}
 
-	useEffect(() => {
-  		const handleKeyDown = (e: KeyboardEvent) => {
-			window.addEventListener("keydown", handleKeyDown);
+	async function useHint() {
+	    if (hintLoading || isRunning.current) return;
+
+	    const wordLetters = [...new Set(
+	        currentWord
+	            .split("")
+	            .filter(letter =>
+	                !guessedLetters.includes(letter) &&
+	                !usedHintLetters.includes(letter)
+	            )
+	    )];
+
+	    const nextHintLetter = wordLetters[0];
+
+	    if (!nextHintLetter) {
+	        toast.error("No more hintable letters left!");
+	        return;
+	    }
+
+	    isRunning.current = true;
+	    setHintLoading(true);
+
+	    try {
+	        const cost = (hints ?? 1) * 20;
+
+		if ((coins ?? 100) >= cost) {
+		    setHints(prev => (prev ?? 1) + 1);
+		
+		    setCoins(prev => Math.max((prev ?? 0) - cost, 0));
+		
+		    setUsedHintLetters(prev => [...prev, nextHintLetter]);
+		    setGuessedLetters(prev => [...new Set([...prev, nextHintLetter])]);
+		
+		    console.log(coins, "from useHint Click");
 		}
-  		return () => {
-    		window.removeEventListener("keydown", handleKeyDown);
-  		};
-	}, []);
 
-	const keyboardDisplay = alphabet.split("").map((letter, key) => {
-		const isGuessed = guessedLetters.includes(letter)
-		const isCorrect = isGuessed && currentWord.includes(letter)
-		const isWrong = isGuessed && !currentWord.includes(letter)
+	        else {
+	            toast.error("Not enough coins");
+	        }
+	    } finally {
+	        setTimeout(() => {
+	            isRunning.current = false;
+	            setHintLoading(false);
+	        }, 200);
+	    }
+	}
 
-		return (
-			<button
-				key={key}
-				ref={(el) => {letterRefs.current[letter] = el}}
-				disabled={isGameOver}
-				onClick={() => onLetterClick(letter)}
-				className={cn(
-					"flex transition-all text-center items-center justify-center rounded md:m-1 border-1 border-white scale-85 md:scale-100 w-10 h-10 text-black",
-					{
-						"bg-amber-400 hover:bg-amber-300 hover:scale-105": !isGuessed,
-						"bg-amber-400 opacity-30": isGameOver,
-						"bg-green-500": isCorrect,
-						"bg-red-600": isWrong
-					}
-				)}
-			>
-				{letter.toUpperCase()}
-			</button>
-		)
-	})
+	
+	function newGame() {
+		const pool =
+			difficulty === "easy"
+				? easyWords
+				: difficulty === "medium"
+				? mediumWords
+				: hardWords
+		const word = pool[Math.floor(Math.random() * pool.length)]
+		setCurrentWord(word)
+		setGuessedLetters([])
+		setIsGameOver(false)
+		setHints(1)
+		setUsedHintLetters([])
+	}
 
-	useEffect(() => {
+	useEffect(() => {  //hasWon, increase coins and conftti
 		if (!currentWord) return
 
-		const hasWon = currentWord.split("").every(letter => guessedLetters.includes(letter))
 		const hasLost = wrongGuesses >= languages.length - 1
 
 		if (hasWon || hasLost) {
+			const addedCoins =
+				difficulty === "easy"
+					? 50
+					: difficulty === "medium"
+					? 100
+					: 150
+			increaseCoins(addedCoins)
+			if (hasWon) {
+				confetti({ particleCount: 150, spread: 130, origin: { y: 0.6 } })
+			}
 			setIsGameOver(true)
-			console.log("game over desu")
-		}
-
-		if (hasWon) {
-			confetti({
-        		particleCount: 150,
-        		spread: 130,
-        		origin: { y: 0.6 }
-      });
 		}
 	}, [guessedLetters, wrongGuesses, currentWord])
 
-	useEffect(() => {
-		const handleKeyDown = (e: KeyboardEvent) => {
-			const key = e.key.toLowerCase(); 
-			const button = letterRefs.current[key];
-			if (alphabet.includes(key) && button) {
-    			button.click();
-    		}
-			if (key === "enter" || key === " ") {
-				newGameRef.current?.click()
-			}
-		}
-		window.addEventListener("keydown", handleKeyDown);
-  		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [])
+    useEffect(() => {
+        if (coins !== null) {
+            localStorage.setItem('coins', String(coins));
+        }
+    }, [coins]);
 
-	function newGame() {
-		const word = difficulty === "easy" ? easyWords[Math.floor(Math.random() * easyWords.length)] : difficulty === "medium" ? mediumWords[Math.floor(Math.random() * mediumWords.length)] : hardWords[Math.floor(Math.random() * hardWords.length)]
-		setIsGameOver(false)
-		setGuessedLetters([])
-		setCurrentWord(word)
-	}
+	const farewellText = useMemo(
+		() =>
+			languages[wrongGuesses - 1]
+				? getFarewellText(languages[wrongGuesses - 1].name)
+				: "",
+		[wrongGuesses]
+	)
 
-	const farewellText = useMemo(() => {
-		if (languages[wrongGuesses - 1]) return getFarewellText(languages[wrongGuesses - 1].name)
-		return ""
-	}, [wrongGuesses])
+	if (!currentWord)
+		return ( //loading game
+			<main className="text-white p-10 text-center">
+				Loading game...
+			</main>
+		)
 
-	if (!currentWord) {
-		return <main className="text-white p-10 text-center">Loading game...</main>
-	}
-
-	const hasWon = currentWord.split("").every(letter => guessedLetters.includes(letter))
-
-	console.log(currentWord, difficulty)
+    console.log(currentWord)
 
 	return (
-		<div className={cn("relative h-screen",
-			{"light": theme !== "dark"}
-		)}>
+		<div 
+			className={cn("relative h-screen w-full", { light: theme !== "dark" })}
+			style={{
+    		    backgroundImage: `url(${
+    		        theme === "dark" ? darkModeBg : lightModeBg
+    		    })`,
+    		    backgroundSize: "cover",
+    		    backgroundPosition: "center",
+    		    backgroundRepeat: "no-repeat",
+    		}}
+		>
+			<Toaster />
 			<main
 				className={cn(
-					"flex flex-col relative z-10 h-full transition-all duration-300 ",
-					{ "blur-md pointer-events-none": isGameOver}
+					"flex flex-col relative z-10 h-full min-h-0 overflow-y-auto transition-all duration-300",
+					{
+						"blur-md pointer-events-none": isGameOver,
+					}
 				)}
-				style={{
-					backgroundImage: `url(${theme === "dark" ? darkModeBg : lightModeBg})`,
-					backgroundSize: "cover",
-					backgroundPosition: "center",
-				}}
-			>	
-				<div className="relative z-50 p-6 md:mt-20 mt-40">
-					<section className={cn(
-						"rounded justify-center mx-auto text-center w-80 md:w-120 p-6 text-white z-10",	
-						{ "bg-purple-700 border-1 light:bg-purple-400 light:border-1 light:border-black": !isGameOver},
-						{"bg-cyan-600 border-1 light:bg-cyan-400 light:border-1 light:border-black": wrongGuesses===0}
-					)}>
-						<h2 className="text-xl font-semibold text-white light:text-black">
-							{isGameOver ? "" : (
-								<>
-									{wrongGuesses === 0 ? (
-										<span>Start Playing</span>
-									) : (
-										<>
-											{farewellText}
-										</>
-									)}
-								</>
+			>
+				<Link href="/">
+					<ArrowLeft
+						stroke={theme === "dark" ? "white" : "black"}
+						className="transition-all w-10 h-10 m-5 absolute hover:scale-120"
+					/>
+				</Link>
+
+				<div className="relative z-50 p-6 mt-20 flex flex-col justify-center items-center">
+					<section
+						className={cn(
+							"rounded justify-center mx-auto text-center w-80 md:w-120 p-6 text-white z-10",
+							{
+								"bg-purple-700 border-1 light:bg-purple-400 light:border-1 light:border-black":
+									!isGameOver,
+							},
+							{
+								"bg-cyan-600 border-1 light:bg-cyan-400 light:border-1 light:border-black":
+									wrongGuesses === 0,
+							}
+						)}
+					>
+						<h2 className="text-xl font-semibold text-white light:text-black ">
+							{isGameOver ? (
+								""
+							) : wrongGuesses === 0 ? (
+								<span>Start Playing by guessing the letters!</span>
+							) : (
+								farewellText
 							)}
 						</h2>
 					</section>
 
 					<section className="flex flex-wrap justify-center items-center mx-auto md:w-120 mt-7">
-						{languagesDisplay}
+						<LanguagesDisplay wrongGuesses={wrongGuesses} />
 					</section>
 
 					<section className="flex flex-row justify-center mt-4">
-						{letterDisplay}
+						<div className="flex flex-wrap justify-center">
+							{currentWord.split("").map((letter, key) => (
+								<span
+									key={key}
+									className="flex rounded-sm light:bg-neutral-400 light:text-black light:border-b-neutral-800 light:border-b-2 bg-neutral-700 h-13 w-13 md:m-1 select-none text-white text-xl text-center items-center justify-center border-b-neutral-300 border-b-4 md:border-b-2 md:scale-100 scale-80"
+								>
+									{guessedLetters.includes(letter)
+										? letter.toUpperCase()
+										: null}
+								</span>
+							))}
+						</div>
 					</section>
 
 					<section className="flex flex-wrap md:w-120 px-5 justify-center text-center mx-auto m-5">
-						{keyboardDisplay}
+						{alphabet.split("").map((letter, key) => {
+							const isGuessed = guessedLetters.includes(letter)
+							const isCorrect =
+								isGuessed && currentWord.includes(letter)
+							const isWrong =
+								isGuessed && !currentWord.includes(letter)
+
+							return (
+								<button
+									key={key}
+									ref={el => {
+										letterRefs.current[letter] = el
+									}}
+									disabled={isGameOver}
+									onClick={() => onLetterClick(letter)}
+									className={cn(
+										"flex transition-all text-center items-center justify-center rounded md:m-1 border-1 border-white scale-85 md:scale-100 w-10 h-10 text-black",
+										{
+											"bg-amber-400 hover:bg-amber-300 hover:scale-105":
+												!isGuessed,
+											"bg-amber-400 opacity-30": isGameOver,
+											"bg-green-500": isCorrect,
+											"bg-red-600": isWrong,
+										}
+									)}
+								>
+									{letter.toUpperCase()}
+								</button>
+							)
+						})}
 					</section>
+
+					<Hint disabled={hintLoading} onClick={useHint}>{(hints ?? 1) * 20}</Hint>
 				</div>
 			</main>
-				
+
+			<CoinDisplay className="z-50">{coins}</CoinDisplay>
+
 			{isGameOver && (
-			<div className="absolute inset-0 flex flex-col items-center mb-20 justify-center z-100">
-			{hasWon ? (
-				<motion.div
-					initial={{ scale: 0.6, opacity: 0 }}
-					animate={{ scale: 1, opacity: 1 }}
-					transition={{ duration: 0.5, ease: "easeOut" }}
-					className="rounded border-2 border-neutral-300 text-white text-center mb-8 md:mb-20 w-120 p-6 shadow-2xl bg-green-600 scale-70 md:scale-125"
-				>
-					<h2 className="text-4xl font-bold mb-2">You Win!</h2>
-					<p className="text-lg">Well done! 🎉</p>
-				</motion.div>
-			) : (
-				<motion.div
-					initial={{ opacity: 0 }}
-					animate={{ opacity: [0.2, 1, 0.2, 1] }}
-					transition={{ duration: 1.5, repeat: Infinity, repeatType: "mirror"}}
-					className="rounded border-2 border-neutral-300 text-white text-center mb-8 md:mb-20 w-120 p-6 shadow-2xl bg-red-700 scale-70 md:scale-125"
-				>
-					<h2 className="text-4xl font-bold mb-2 animate-glitch">YOU LOSE!</h2>
-					<p className="text-lg animate-glitch">Better start learning Assembly😭</p>
-				</motion.div>
-			)}
-				<button ref={newGameRef} onClick={newGame} className="transition-all bg-blue-400 hover:bg-blue-300 hover:scale-105 border-1 text-black border-neutral-200 rounded h-10 w-80 block mx-auto">New Game</button>
-			</div>
+				<div className="absolute inset-0 flex flex-col items-center mb-20 justify-center z-100">
+					{hasWon ? (
+						<motion.div
+							initial={{ scale: 0.6, opacity: 0 }}
+							animate={{ scale: 1, opacity: 1 }}
+							transition={{ duration: 0.5, ease: "easeOut" }}
+							className="rounded border-2 border-neutral-300 text-white text-center mb-8 md:mb-20 w-120 p-6 shadow-2xl bg-green-600 scale-70 md:scale-125"
+						>
+							<h2 className="text-4xl font-bold mb-2">You Win!</h2>
+							<p className="text-lg">Well done! 🎉 The word was {currentWord.toUpperCase()}	</p>
+						</motion.div>
+					) : (
+						<motion.div
+							initial={{ opacity: 0 }}
+							animate={{ opacity: [0.2, 1, 0.2, 1] }}
+							transition={{
+								duration: 1.5,
+								repeat: Infinity,
+								repeatType: "mirror",
+							}}
+							className="rounded border-2 border-neutral-300 text-white text-center mb-8 md:mb-20 w-120 p-6 shadow-2xl bg-red-700 scale-70 md:scale-125"
+						>
+							<h2 className="text-4xl font-bold mb-2 animate-glitch">
+								YOU LOSE!
+							</h2>
+							<p className="text-lg animate-glitch">
+								Better start learning Assembly😭 
+								The word was {currentWord.toUpperCase()}
+							</p>
+						</motion.div>
+					)}
+					<button
+						ref={newGameRef}
+						onClick={newGame}
+						className="transition-all bg-blue-400 hover:bg-blue-300 hover:scale-105 border-1 text-black border-neutral-200 rounded h-10 w-80 block mx-auto"
+					>
+						New Game
+					</button>
+				</div>
 			)}
 		</div>
 	)
