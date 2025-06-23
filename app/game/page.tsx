@@ -22,10 +22,11 @@ export default function AssemblyEndgame() {
 	const [hints, setHints] = useState<number | null>(null)
 	const [usedHintLetters, setUsedHintLetters] = useState<string[]>([])
 	const [hintLoading, setHintLoading] = useState(false);
+	const [coinChangeDirection, setCoinChangeDirection] = useState<"up" | "down" | null>(null);	
 
 	const letterRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({})
 	const newGameRef = useRef<HTMLButtonElement>(null)
-	const increaseCoinsInterval = useRef<NodeJS.Timeout | null>(null);
+	const coinAnimationInterval = useRef<NodeJS.Timeout | null>(null);
 	const isRunning = useRef(false)
 	const alphabet = "abcdefghijklmnopqrstuvwxyz"
 	const darkModeBg = "./dark_mode_bg.png"
@@ -41,8 +42,31 @@ export default function AssemblyEndgame() {
 		[currentWord, guessedLetters]
 	)
 
+	const hasLost = useMemo(
+		() => wrongGuesses >= languages.length - 1,
+		[wrongGuesses]
+	)
+
+	const farewellText = useMemo(
+		() =>
+			languages[wrongGuesses - 1]
+				? getFarewellText(languages[wrongGuesses - 1].name)
+				: "",
+		[wrongGuesses]
+	)
+
 	useEffect(() => setTheme(localStorage.getItem("theme")), [])
 	useEffect(() => setDifficulty(localStorage.getItem("difficulty")), [])
+
+	useEffect(() => { //onGameLose decrease coins logic
+		if (!hasLost) return;
+
+		let penalty = 0;
+		if (difficulty === "hard") penalty = 50;
+		else if (difficulty === "medium") penalty = 20;
+
+		decreaseCoins(penalty);	
+	}, [hasLost])
 
 	useEffect(() => { //coins setup
 		if (typeof window !== "undefined") {
@@ -128,26 +152,54 @@ export default function AssemblyEndgame() {
 	}
 
 	async function increaseCoins(value: number) {
-    	if (increaseCoinsInterval.current) {
-    	    clearInterval(increaseCoinsInterval.current);
+		if (value <= 0) return
+    	if (coinAnimationInterval.current) {
+    	    clearInterval(coinAnimationInterval.current);
     	}
-	
+		
+		setCoinChangeDirection("up")
+
     	const start = coins ?? 0;
     	const end = start + value;
 	
     	let current = start;
 	
-    	increaseCoinsInterval.current = setInterval(() => {
+    	coinAnimationInterval.current = setInterval(() => {
     	    current += 2;
     	    setCoins(current);
 		
     	    if (current >= end) {
-    	        if (increaseCoinsInterval.current) {
-    	            clearInterval(increaseCoinsInterval.current);
-    	            increaseCoinsInterval.current = null;
+    	        if (coinAnimationInterval.current) {
+    	            clearInterval(coinAnimationInterval.current);
+    	            coinAnimationInterval.current = null;
+					setCoinChangeDirection(null);
     	        }
     	    }
     	}, 1);
+	}
+
+	async function decreaseCoins(value: number) {
+		if (value <= 0) return
+		if (coinAnimationInterval.current) {
+			clearInterval(coinAnimationInterval.current);
+		}
+
+		setCoinChangeDirection("down")
+
+		const start = coins ?? 0;
+		const end = Math.max(start - value, 0);
+		let current = start;
+
+		coinAnimationInterval.current = setInterval(() => {
+			current -= 2;
+			setCoins(current);
+
+			if (current <= end) {
+				clearInterval(coinAnimationInterval.current!);
+				coinAnimationInterval.current = null;
+				setCoinChangeDirection(null);
+			}
+		}, 30);
 	}
 
 	async function useHint() {
@@ -178,12 +230,11 @@ export default function AssemblyEndgame() {
 		if ((coins ?? 100) >= cost) {
 		    setHints(prev => (prev ?? 1) + 1);
 		
-		    setCoins(prev => Math.max((prev ?? 0) - cost, 0));
+			setCoinChangeDirection("down")
+			setCoins(prev => Math.max((prev ?? 0) - cost, 0));
 		
 		    setUsedHintLetters(prev => [...prev, nextHintLetter]);
-		    setGuessedLetters(prev => [...new Set([...prev, nextHintLetter])]);
-		
-		    console.log(coins, "from useHint Click");
+		    setGuessedLetters(prev => [...new Set([...prev, nextHintLetter])]);		
 		}
 
 	        else {
@@ -191,6 +242,7 @@ export default function AssemblyEndgame() {
 	        }
 	    } finally {
 	        setTimeout(() => {
+				setCoinChangeDirection(null)
 	            isRunning.current = false;
 	            setHintLoading(false);
 	        }, 200);
@@ -218,17 +270,13 @@ export default function AssemblyEndgame() {
 
 		const hasLost = wrongGuesses >= languages.length - 1
 
-		if (hasWon || hasLost) {
-			const addedCoins =
-				difficulty === "easy"
-					? 30
-					: difficulty === "medium"
-					? 40
-					: 50
+		if (hasWon) {
+			const addedCoins = difficulty === "easy" ? 30 : difficulty === "medium" ? 40 : 50
 			increaseCoins(addedCoins)
-			if (hasWon) {
-				confetti({ particleCount: 150, spread: 130, origin: { y: 0.6 } })
-			}
+			confetti({ particleCount: 150, spread: 130, origin: { y: 0.6 } })
+		}
+
+		if (hasWon || hasLost) {
 			setIsGameOver(true)
 		}
 	}, [guessedLetters, wrongGuesses, currentWord])
@@ -239,13 +287,10 @@ export default function AssemblyEndgame() {
         }
     }, [coins]);
 
-	const farewellText = useMemo(
-		() =>
-			languages[wrongGuesses - 1]
-				? getFarewellText(languages[wrongGuesses - 1].name)
-				: "",
-		[wrongGuesses]
-	)
+	useEffect(() => {
+		(window as any).gimmeCoins = (password: string, value: number) => password === "weliveinacruelworld" ? increaseCoins(value) : console.log("Wrong password.");
+		(window as any).gimmeWord = (password: string) => password === "weliveinacruelworld" ? console.log(currentWord) : console.log("Wrong password")
+	}, [currentWord])
 
 	if (!currentWord)
 		return ( //loading game
@@ -254,7 +299,9 @@ export default function AssemblyEndgame() {
 			</main>
 		)
 
-    // console.log(currentWord)
+	if ((coins ?? 100) < 0) {
+		setCoins(0)
+	}
 
 	return (
 		<div 
@@ -365,7 +412,7 @@ export default function AssemblyEndgame() {
 				</div>
 			</main>
 
-			<CoinDisplay className="z-50">{coins}</CoinDisplay>
+			<CoinDisplay className="z-50" direction={coinChangeDirection}>{coins}</CoinDisplay>
 
 			{isGameOver && (
 				<div className="absolute inset-0 flex flex-col items-center mb-20 justify-center z-100">

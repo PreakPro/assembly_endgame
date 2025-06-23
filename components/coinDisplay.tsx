@@ -4,17 +4,29 @@ import { cn } from "@/lib/utils"
 
 interface MainProps {
     children: ReactNode,
-    className?: string
-    spanClassName?: string
+    className?: string,
+    spanClassName?: string,
+    direction?: "up" | "down" | null
 }
 
-export default function CoinDisplay({ children, className, spanClassName }: MainProps) {
+export default function CoinDisplay({ children, className, spanClassName, direction }: MainProps) {
     return (
-            <div className={cn(
-                "absolute top-7 right-7 md:right-9 flex items-center gap-1 font-semibold text-lg scale-150 md:scale-160 px-3",
-                className
+        <div className={cn(
+            "absolute top-7 transition-all right-7 md:right-9 flex items-center gap-1 font-semibold text-lg px-3",
+            direction && "scale-170 md:scale-180",
+            !direction && "scale-150 md:scale-160",
+            className
+        )}>
+            <Coins className="text-yellow-300"/>
+            <span className={cn(
+                "transition-all",
+                direction === "up" && "text-green-400",
+                direction === "down" && "text-red-400",
+                !direction && "text-white", 
+                spanClassName
             )}>
-                <Coins className="text-yellow-300"/>
-                <span className={cn("text-white", spanClassName)}>{children}</span>            </div>
+                {children}
+            </span>
+        </div>
     )
 }
