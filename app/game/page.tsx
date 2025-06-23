@@ -175,7 +175,7 @@ export default function AssemblyEndgame() {
 					setCoinChangeDirection(null);
     	        }
     	    }
-    	}, 1);
+    	}, 10);
 	}
 
 	async function decreaseCoins(value: number) {
@@ -199,7 +199,7 @@ export default function AssemblyEndgame() {
 				coinAnimationInterval.current = null;
 				setCoinChangeDirection(null);
 			}
-		}, 30);
+		}, 10);
 	}
 
 	async function useHint() {
@@ -327,11 +327,11 @@ export default function AssemblyEndgame() {
 				<Link href="/">
 					<ArrowLeft
 						stroke={theme === "dark" ? "white" : "black"}
-						className="transition-all w-10 h-10 m-5 absolute hover:scale-120"
+						className="transition-all w-10 h-10 m-5 hover:scale-120 z-50 fixed"
 					/>
 				</Link>
 
-				<div className="relative z-50 p-6 mt-20 flex flex-col justify-center items-center">
+				<div className="relative z-40 p-6 mt-20 flex flex-col justify-center items-center">
 					<section
 						className={cn(
 							"rounded justify-center mx-auto text-center w-80 md:w-120 p-6 text-white z-10",
@@ -424,7 +424,7 @@ export default function AssemblyEndgame() {
 							className="rounded border-2 border-neutral-300 text-white text-center mb-8 md:mb-20 w-120 p-6 shadow-2xl bg-green-600 scale-70 md:scale-125"
 						>
 							<h2 className="text-4xl font-bold mb-2">You Win!</h2>
-							<p className="text-lg">Well done! 🎉 The word was {currentWord.toUpperCase()}	</p>
+							<p className="text-2xl md:text-lg">Well done! 🎉 The word was {currentWord.toUpperCase()}	</p>
 						</motion.div>
 					) : (
 						<motion.div
@@ -440,7 +440,7 @@ export default function AssemblyEndgame() {
 							<h2 className="text-4xl font-bold mb-2 animate-glitch">
 								YOU LOSE!
 							</h2>
-							<p className="text-lg animate-glitch">
+							<p className="text-2xl md:text-lg animate-glitch">
 								Better start learning Assembly😭 
 								The word was {currentWord.toUpperCase()}
 							</p>
