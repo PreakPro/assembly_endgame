@@ -175,7 +175,7 @@ export default function AssemblyEndgame() {
 					setCoinChangeDirection(null);
     	        }
     	    }
-    	}, 10);
+    	}, 25);
 	}
 
 	async function decreaseCoins(value: number) {
@@ -199,7 +199,7 @@ export default function AssemblyEndgame() {
 				coinAnimationInterval.current = null;
 				setCoinChangeDirection(null);
 			}
-		}, 10);
+		}, 25);
 	}
 
 	async function useHint() {
