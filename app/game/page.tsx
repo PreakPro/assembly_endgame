@@ -19,7 +19,8 @@ export default function AssemblyEndgame() {
 	const [theme, setTheme] = useState<string | null>(null)
 	const [difficulty, setDifficulty] = useState<string | null>(null)
 	const [coins, setCoins] = useState<number | null>(null)
-	const [hints, setHints] = useState<number | null>(null)
+	const [games, setGames] = useState<number | null>(null)
+	const [hints, setHints] = useState<number | null>(1)
 	const [usedHintLetters, setUsedHintLetters] = useState<string[]>([])
 	const [hintLoading, setHintLoading] = useState(false);
 	const [coinChangeDirection, setCoinChangeDirection] = useState<"up" | "down" | null>(null);	
@@ -36,7 +37,7 @@ export default function AssemblyEndgame() {
 	const darkModeBg = "./dark_mode_bg.png"
 	const lightModeBg = "./light_mode_bg.png"
 	const correctSound = "./audio/correct.wav"
-	const incorrectSound = "./audio/incorrect.wav"
+	const incorrectSound = "./audio/incorrect.mp3"
 	const winSound = "./audio/win.mp3"
 	const loseSound = "./audio/lose.wav"
 
@@ -90,9 +91,19 @@ export default function AssemblyEndgame() {
 		}
     }, []);
 
-	useEffect(() => { //hints = 1 setup
-		if (!hints) return setHints(1)
-	}, [])
+	useEffect(() => { //no. of games setup
+		if (typeof window !== "undefined") {
+			const stored = localStorage.getItem("games");
+
+			if (stored === null) {
+				localStorage.setItem("games", "0");
+				setGames(1);
+			} else {
+				const game = Number(stored);
+				setGames(game);
+			}
+		}
+    }, []);
 
 	useEffect(() => { //new word logic
 		if (!difficulty) return
@@ -174,6 +185,13 @@ export default function AssemblyEndgame() {
         };
     }, [alphabet]);
 
+	function gameIncrease() {
+		setGames(prev => {
+			const updated = (prev ?? 0) + 1;
+			localStorage.setItem('games', String(updated));
+			return updated;
+		});
+	}
 
 	function onLetterClick(letter: string) {
 		setGuessedLetters(prev =>
@@ -182,7 +200,6 @@ export default function AssemblyEndgame() {
 		!isGameOver && currentWord.includes(letter) && correctSoundRef.current && correctSoundRef.current.play()
 		!isGameOver && !currentWord.includes(letter) && incorrectSoundRef.current && incorrectSoundRef.current.play()
 	}
-
 
 	async function increaseCoins(value: number) {
 		if (value <= 0) return
@@ -281,7 +298,6 @@ export default function AssemblyEndgame() {
 	        }, 200);
 	    }
 	}
-
 	
 	function newGame() {
 		const pool =
@@ -291,11 +307,12 @@ export default function AssemblyEndgame() {
 				? mediumWords
 				: hardWords
 		const word = pool[Math.floor(Math.random() * pool.length)]
-		setCurrentWord(word)
-		setGuessedLetters([])
-		setIsGameOver(false)
-		setHints(1)
-		setUsedHintLetters([])
+		setCurrentWord(word);
+		setGuessedLetters([]);
+		setIsGameOver(false);
+		setHints(1);
+		setUsedHintLetters([]);
+		gameIncrease();
 	}
 
 	useEffect(() => {  // play win/lose sound when game is over
@@ -321,7 +338,7 @@ export default function AssemblyEndgame() {
 			</main>
 		)
 
-	if ((coins ?? 100) < 0) {
+	if ((coins ?? 100) < 0) { //negative value prevention
 		setCoins(0)
 	}
 
@@ -356,6 +373,10 @@ export default function AssemblyEndgame() {
 						className="transition-all w-10 h-10 m-5 hover:scale-120 z-50 fixed"
 					/>
 				</Link>
+
+				<section className="absolute top-1 left-1/2 transform -translate-x-1/2 rounded bg-emerald-500 light:bg-emerald-400 border-white shadow-black light:border-black border-1 shadow-sm w-40 lg:w-60 h-10 md:mt-5 mt-5 -m-4 md:-m-0">
+					<p className="lg:text-xl text-lg flex items-center justify-center h-full light:text-black text-white">Games played: {games ?? 0}</p>
+				</section>
 
 				<div className="relative z-40 p-6 mt-20 flex flex-col justify-center items-center">
 					<section
@@ -478,6 +499,14 @@ export default function AssemblyEndgame() {
 					>
 						New Game
 					</button>
+					<div className="m-0.8 top-1 left-1 absolute z-10">
+						<Link href="/">
+							<ArrowLeft
+								stroke={theme === "dark" ? "white" : "black"}
+								className="transition-all w-10 h-10 m-5 hover:scale-120 z-50 fixed"
+							/>
+						</Link>
+					</div>
 				</div>
 			)}
 		</div>

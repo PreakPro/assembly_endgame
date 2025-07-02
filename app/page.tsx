@@ -92,7 +92,7 @@ export default function Page() {
                 </div>
             
 
-            <div className="absolute justify-center bg-white/20 rounded-lg h-23 w-43 items-center flex flex-row transition-all text-center bottom-1/6 gap-3">
+            <div className="absolute justify-center bg-white/20 rounded-lg h-23 w-43 items-center flex flex-row transition-all text-center bottom-1/6 md:bottom-1/8 gap-3">
                 {!isInfoOpen ? theme === "dark" ?
                     <div className="transition-all items-center hover:bg-white/30 rounded top-1/4 p-5" onClick={toggleTheme}>
                         <Moon
