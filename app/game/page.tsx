@@ -28,9 +28,17 @@ export default function AssemblyEndgame() {
 	const newGameRef = useRef<HTMLButtonElement>(null)
 	const coinAnimationInterval = useRef<NodeJS.Timeout | null>(null);
 	const isRunning = useRef(false)
+	const correctSoundRef = useRef<HTMLAudioElement>(null)
+	const incorrectSoundRef = useRef<HTMLAudioElement>(null)
+	const winSoundRef = useRef<HTMLAudioElement>(null)
+	const loseSoundRef = useRef<HTMLAudioElement>(null)
 	const alphabet = "abcdefghijklmnopqrstuvwxyz"
 	const darkModeBg = "./dark_mode_bg.png"
 	const lightModeBg = "./light_mode_bg.png"
+	const correctSound = "./audio/correct.wav"
+	const incorrectSound = "./audio/incorrect.wav"
+	const winSound = "./audio/win.mp3"
+	const loseSound = "./audio/lose.wav"
 
 	const wrongGuesses = useMemo(
 		() => guessedLetters.filter(letter => !currentWord.includes(letter)).length,
@@ -122,8 +130,30 @@ export default function AssemblyEndgame() {
 			setGuessedLetters(prev => [...new Set([...prev, nextHintLetter])])
 		}
 	}, [])
-   
-	useEffect(() => {
+
+	useEffect(() => { //saving coins to localStorage
+		if (coins !== null) {
+			localStorage.setItem("coins", String(coins));
+		}
+	}, [coins]);
+
+	useEffect(() => { //hasWon logic, confetti, increaseCoins
+		if (!currentWord || isGameOver) return;
+
+		const didLose = wrongGuesses >= languages.length - 1;
+
+		if (hasWon) {
+			const addedCoins = difficulty === "easy" ? 30 : difficulty === "medium" ? 40 : 50;
+			increaseCoins(addedCoins);
+			confetti({ particleCount: 150, spread: 130, origin: { y: 0.6 } });
+		}
+
+		if (hasWon || didLose) {
+			setIsGameOver(true);
+		}
+	}, [guessedLetters, wrongGuesses, currentWord, isGameOver]);
+
+	useEffect(() => { //keyboard logic
         const handleKeyDown = (e: KeyboardEvent) => {
             const key = e.key.toLowerCase();
             const button = letterRefs.current[key];
@@ -149,7 +179,10 @@ export default function AssemblyEndgame() {
 		setGuessedLetters(prev =>
 			prev.includes(letter) ? prev : [...prev, letter]
 		)
+		!isGameOver && currentWord.includes(letter) && correctSoundRef.current && correctSoundRef.current.play()
+		!isGameOver && !currentWord.includes(letter) && incorrectSoundRef.current && incorrectSoundRef.current.play()
 	}
+
 
 	async function increaseCoins(value: number) {
 		if (value <= 0) return
@@ -265,29 +298,18 @@ export default function AssemblyEndgame() {
 		setUsedHintLetters([])
 	}
 
-	useEffect(() => {  //hasWon, increase coins and conftti
-		if (!currentWord) return
-
-		const hasLost = wrongGuesses >= languages.length - 1
-
-		if (hasWon) {
-			const addedCoins = difficulty === "easy" ? 30 : difficulty === "medium" ? 40 : 50
-			increaseCoins(addedCoins)
-			confetti({ particleCount: 150, spread: 130, origin: { y: 0.6 } })
+	useEffect(() => {  // play win/lose sound when game is over
+		if (isGameOver) {
+			if (hasWon && winSoundRef.current) {
+				winSoundRef.current.play();
+			}
+			if (hasLost && loseSoundRef.current) {
+				loseSoundRef.current.play();
+			}
 		}
+	}, [isGameOver, hasWon, hasLost]);
 
-		if (hasWon || hasLost) {
-			setIsGameOver(true)
-		}
-	}, [guessedLetters, wrongGuesses, currentWord])
-
-    useEffect(() => {
-        if (coins !== null) {
-            localStorage.setItem('coins', String(coins));
-        }
-    }, [coins]);
-
-	useEffect(() => {
+	useEffect(() => { //cheats
 		(window as any).gimmeCoins = (password: string, value: number) => password === "weliveinacruelworld" ? increaseCoins(value) : console.log("Wrong password.");
 		(window as any).gimmeWord = (password: string) => password === "weliveinacruelworld" ? console.log(currentWord) : console.log("Wrong password")
 	}, [currentWord])
@@ -316,6 +338,10 @@ export default function AssemblyEndgame() {
     		}}
 		>
 			<Toaster />
+			<audio ref={correctSoundRef} src={correctSound}/>
+			<audio ref={incorrectSoundRef} src={incorrectSound}/>
+			<audio ref={winSoundRef} src={winSound}/>
+			<audio ref={loseSoundRef} src={loseSound}/>
 			<main
 				className={cn(
 					"flex flex-col relative z-10 h-full min-h-0 overflow-y-auto transition-all duration-300",
@@ -377,11 +403,10 @@ export default function AssemblyEndgame() {
 
 					<section className="flex flex-wrap md:w-120 px-5 justify-center text-center mx-auto m-5">
 						{alphabet.split("").map((letter, key) => {
+
 							const isGuessed = guessedLetters.includes(letter)
-							const isCorrect =
-								isGuessed && currentWord.includes(letter)
-							const isWrong =
-								isGuessed && !currentWord.includes(letter)
+							const isCorrect = isGuessed && currentWord.includes(letter)
+							const isWrong = isGuessed && !currentWord.includes(letter)
 
 							return (
 								<button
